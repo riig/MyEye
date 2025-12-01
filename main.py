@@ -245,7 +245,8 @@ class CameraThumbnail(QFrame):
         self.overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.overlay.hide()
         self.detach_btn = QPushButton("Make Separate Window", self)
-        self.detach_btn.setFixedSize(160, 24)
+        self.detach_btn.setMinimumHeight(28)
+        self.detach_btn.setMinimumWidth(190)
         self.detach_btn.setStyleSheet("QPushButton{background:#1e88e5;color:#fff;border:none;border-radius:3px;} QPushButton:pressed{background:#166bb0;}")
         self.detach_btn.clicked.connect(self._detach)
         self.detach_btn.hide()
@@ -475,7 +476,8 @@ class CameraApp(QWidget):
         self.motion_indicator.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.motion_indicator.hide()
         self.main_detach_btn = QPushButton("Make Separate Window", self.video_label)
-        self.main_detach_btn.setFixedSize(160, 26)
+        self.main_detach_btn.setMinimumHeight(30)
+        self.main_detach_btn.setMinimumWidth(200)
         self.main_detach_btn.setStyleSheet("QPushButton{background:#1e88e5;color:#fff;border:none;border-radius:3px;} QPushButton:pressed{background:#166bb0;}")
         self.main_detach_btn.clicked.connect(self.detach_main_fullscreen)
         self.main_detach_btn.hide()
@@ -571,11 +573,17 @@ class CameraApp(QWidget):
 
     def resizeEvent(self, ev):
         try:
-            self.main_overlay.move(10, 10)
-            self.motion_indicator.move(10, 38)
-            self.main_detach_btn.move(self.video_label.width() - self.main_detach_btn.width() - 10, 10)
-            self.settings_btn.move(14, 14)
-            self.close_btn.move(14, 14 + self.settings_btn.height() + 8)
+            margin = 14
+            self.main_detach_btn.adjustSize()
+            self.main_overlay.adjustSize()
+            self.motion_indicator.adjustSize()
+            self.main_detach_btn.move(self.video_label.width() - self.main_detach_btn.width() - margin, margin)
+            self.settings_btn.move(margin, margin)
+            self.close_btn.move(margin, margin + self.settings_btn.height() + 8)
+            overlay_y = max(margin, self.video_label.height() - self.main_overlay.height() - margin)
+            self.main_overlay.move(margin, overlay_y)
+            motion_y = max(margin, overlay_y - self.motion_indicator.height() - 8)
+            self.motion_indicator.move(margin, motion_y)
         except Exception:
             pass
         super().resizeEvent(ev)
@@ -1350,5 +1358,5 @@ class CameraApp(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = CameraApp()
-    w.show()
+    w.showFullScreen()
     sys.exit(app.exec())
