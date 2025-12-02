@@ -244,7 +244,7 @@ class CameraThumbnail(QFrame):
         self.overlay.setStyleSheet("background: rgba(0,0,0,0.6); color: #fff; padding: 3px 6px; border-radius:4px;")
         self.overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.overlay.hide()
-        self.detach_btn = QPushButton("Make Separate Window", self)
+        self.detach_btn = QPushButton("Separate Window", self)
         self.detach_btn.setMinimumHeight(28)
         self.detach_btn.setMinimumWidth(190)
         self.detach_btn.setStyleSheet("QPushButton{background:#1e88e5;color:#fff;border:none;border-radius:3px;} QPushButton:pressed{background:#166bb0;}")
@@ -259,7 +259,7 @@ class CameraThumbnail(QFrame):
     def resizeEvent(self, ev):
         try:
             self.overlay.move(8, 8)
-            self.detach_btn.move(self.width() - self.detach_btn.width() - 8, 8)
+            self.detach_btn.move(8, self.overlay.height() + 12)
         except Exception:
             pass
         super().resizeEvent(ev)
@@ -475,7 +475,16 @@ class CameraApp(QWidget):
         self.motion_indicator.setStyleSheet("background:#6366f1; color:#fff; padding:3px 6px; border-radius:4px;")
         self.motion_indicator.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.motion_indicator.hide()
-        self.main_detach_btn = QPushButton("Make Separate Window", self.video_label)
+        self.logo_label = QLabel(self.video_label)
+        self.logo_label.setFixedSize(88, 88)
+        self.logo_label.setStyleSheet("background:transparent; border:1px dashed #1f2937; border-radius:44px;")
+        self.logo_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.brand_label = QLabel(self)
+        self.brand_label.setFixedHeight(44)
+        self.brand_label.setMinimumWidth(140)
+        self.brand_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        self.brand_label.setStyleSheet("color:#e6eef8; font-size:18px; font-weight:600; background:transparent; border:1px dashed #1f2937; border-radius:8px; padding:8px 12px;")
+        self.main_detach_btn = QPushButton("Separate Window", self.video_label)
         self.main_detach_btn.setMinimumHeight(30)
         self.main_detach_btn.setMinimumWidth(200)
         self.main_detach_btn.setStyleSheet("QPushButton{background:#1e88e5;color:#fff;border:none;border-radius:3px;} QPushButton:pressed{background:#166bb0;}")
@@ -497,16 +506,13 @@ class CameraApp(QWidget):
         self.record_c2_btn = QPushButton("Record Corner 2")
         self.record_c2_btn.setCheckable(True)
         self.record_c2_btn.clicked.connect(lambda: self.toggle_corner_recording(2))
-        self.switch_main_btn = QPushButton("Switch Main")
-        self.switch_c1_btn = QPushButton("Switch Corner 1")
-        self.switch_c2_btn = QPushButton("Switch Corner 2")
         self.motion_btn = QPushButton("Motion Detect")
         self.motion_btn.setCheckable(True)
         self.motion_btn.clicked.connect(self.toggle_motion)
         self.motion_enabled = False
         self._update_motion_button_style()
         self.fs_combo = QComboBox()
-        self.fs_btn = QPushButton("View Selected Camera")
+        self.fs_btn = QPushButton("Make Separate Window")
         self.fs_btn.clicked.connect(self.open_fullscreen_from_combo)
         self.main_sel = QComboBox()
         self.c1_sel = QComboBox()
@@ -523,16 +529,14 @@ class CameraApp(QWidget):
         self.c1_sel.currentIndexChanged.connect(lambda _: self._select_slot("corner1", self.c1_sel))
         self.c2_sel.currentIndexChanged.connect(lambda _: self._select_slot("corner2", self.c2_sel))
         self._selectors_updating = False
-        self.settings_btn = QPushButton("⚙")
-        self.settings_btn.setParent(self.video_label)
-        self.settings_btn.setFixedSize(44, 44)
-        self.settings_btn.setStyleSheet("QPushButton{background:#1e3a8a;color:#fff;font-size:20px;border:none;border-radius:22px;} QPushButton:pressed{background:#2563eb;}")
-        self.settings_btn.clicked.connect(self.toggle_controls_panel)
         self.close_btn = QPushButton("✕")
-        self.close_btn.setParent(self.video_label)
-        self.close_btn.setFixedSize(44, 44)
-        self.close_btn.setStyleSheet("QPushButton{background:#b91c1c;color:#fff;font-size:20px;border:none;border-radius:22px;} QPushButton:pressed{background:#dc2626;}")
+        self.close_btn.setParent(self)
+        self.close_btn.setFixedSize(22, 22)
+        self.close_btn.setStyleSheet("QPushButton{background:#b91c1c;color:#fff;font-size:14px;border:none;border-radius:11px;} QPushButton:pressed{background:#dc2626;}")
         self.close_btn.clicked.connect(self.close)
+        self._load_logo()
+        self._load_brand()
+        self.logo_label.mousePressEvent = self._logo_press
         self.controls_panel = None
         self._panel_was_visible = False
         self.pending_settings = dict(self.settings)
@@ -573,17 +577,25 @@ class CameraApp(QWidget):
 
     def resizeEvent(self, ev):
         try:
-            margin = 14
+            margin = 6
+            logo_x = 3
+            logo_y = 20
             self.main_detach_btn.adjustSize()
             self.main_overlay.adjustSize()
             self.motion_indicator.adjustSize()
-            self.main_detach_btn.move(self.video_label.width() - self.main_detach_btn.width() - margin, margin)
-            self.settings_btn.move(margin, margin)
-            self.close_btn.move(margin, margin + self.settings_btn.height() + 8)
-            overlay_y = max(margin, self.video_label.height() - self.main_overlay.height() - margin)
-            self.main_overlay.move(margin, overlay_y)
-            motion_y = max(margin, overlay_y - self.motion_indicator.height() - 8)
+            self.logo_label.move(logo_x, self.height() - self.logo_label.height() - logo_y)
+            brand_y = self.height() - max(self.logo_label.height(), self.brand_label.height()) - logo_y + (self.logo_label.height() - self.brand_label.height()) // 2 + 14
+            brand_x = self.logo_label.x() + self.logo_label.width() + 2
+            self.brand_label.move(brand_x, brand_y)
+            self.close_btn.move(self.width() - self.close_btn.width() - margin, margin)
+            self.close_btn.raise_()
+            self.corner1.detach_btn.move(8, self.corner1.overlay.height() + 12)
+            self.corner2.detach_btn.move(8, self.corner2.overlay.height() + 12)
+            self.main_overlay.move(margin, margin)
+            self.main_detach_btn.move(margin, self.main_overlay.height() + margin + 6)
+            motion_y = self.main_detach_btn.y() + self.main_detach_btn.height() + 6
             self.motion_indicator.move(margin, motion_y)
+            self.brand_label.raise_()
         except Exception:
             pass
         super().resizeEvent(ev)
@@ -986,8 +998,12 @@ class CameraApp(QWidget):
             else:
                 QWidget.keyPressEvent(fs, ev)
 
+        def closeEvent(ev):
+            cleanup()
+            QWidget.closeEvent(fs, ev)
+
         fs.keyPressEvent = keyPressEvent
-        fs.closeEvent = lambda ev: (cleanup(), QWidget.closeEvent(fs, ev))
+        fs.closeEvent = closeEvent
         fs.destroyed.connect(lambda *_: cleanup())
 
     def update_frame(self):
@@ -1168,12 +1184,19 @@ class CameraApp(QWidget):
             other_cam = self.pending_settings.get(other)
             other_path = self.pending_settings.get(f"{other}_path")
             if cam and ((cam.get("path") and cam.get("path") == other_path) or (cam.get("index") is not None and cam.get("index") == other_cam)):
-                QMessageBox.warning(self, "In Use", "That camera is already assigned elsewhere.")
-                self._populate_selectors(
-                    {"index": self.pending_settings.get("main"), "path": self.pending_settings.get("main_path")},
-                    {"index": self.pending_settings.get("corner1"), "path": self.pending_settings.get("corner1_path")},
-                    {"index": self.pending_settings.get("corner2"), "path": self.pending_settings.get("corner2_path")},
-                )
+                self._show_in_use_warning()
+                self._selectors_updating = True
+                try:
+                    key = self._cam_key({"index": self.pending_settings.get(slot), "path": self.pending_settings.get(f"{slot}_path")})
+                    for i in range(cb.count()):
+                        data = cb.itemData(i)
+                        if self._cam_key(data) == key:
+                            cb.setCurrentIndex(i)
+                            break
+                    else:
+                        cb.setCurrentIndex(0)
+                finally:
+                    self._selectors_updating = False
                 return
 
         if cam is None:
@@ -1182,6 +1205,11 @@ class CameraApp(QWidget):
         else:
             self.pending_settings[slot] = cam.get("index") if isinstance(cam.get("index"), int) and cam.get("index") >= 0 else None
             self.pending_settings[f"{slot}_path"] = cam.get("path")
+
+        self.settings[slot] = self.pending_settings.get(slot)
+        self.settings[f"{slot}_path"] = self.pending_settings.get(f"{slot}_path")
+        save_settings(self.settings)
+        self.apply_settings()
 
     def _apply_resolution_from_panel(self):
         res = self.res_sel.currentData()
@@ -1200,12 +1228,6 @@ class CameraApp(QWidget):
         save_settings(self.settings)
         self.apply_settings()
 
-    def _apply_slot(self, slot: str):
-        for key in (slot, f"{slot}_path"):
-            self.settings[key] = self.pending_settings.get(key)
-        save_settings(self.settings)
-        self.apply_settings()
-
     def _reset_pending_to_live(self):
         self.pending_settings = dict(self.settings)
 
@@ -1218,10 +1240,10 @@ class CameraApp(QWidget):
     def _styled_list_view(self):
         lv = QListView()
         lv.setStyleSheet(
-            "QListView{background:#1e3a8a; color:#fff; border:none; padding:0; margin:0;}"
-            "QListView::item{padding:8px 10px; margin:0; background:#1e3a8a;}"
-            "QListView::item:selected{background:#000; color:#fff;}"
-            "QListView::item:hover{background:#0b1220; color:#fff;}"
+            "QListView{background:#0b1220; color:#e6eef8; border:1px solid #1f2937; padding:0; margin:0;}"
+            "QListView::item{padding:10px 12px; margin:0; background:#0b1220; border:0;}"
+            "QListView::item:selected{background:#1e3a8a; color:#fff; border:0;}"
+            "QListView::item:hover{background:#111827; color:#fff;}"
         )
         return lv
 
@@ -1238,38 +1260,35 @@ class CameraApp(QWidget):
         if self.controls_panel:
             return
         panel = QWidget(self, Qt.WindowType.Tool)
-        panel.setWindowTitle("Controls")
-        panel.setWindowFlags(panel.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        panel.setWindowTitle("MyEye - Control Panel")
+        panel.setWindowFlags(panel.windowFlags() | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint)
         panel.setStyleSheet("""
             QWidget#controlPanel {background:#0b1220; color:#e6eef8; border:1px solid #1f2937; border-radius:12px;}
             QLabel {font-size:13px; color:#e6eef8; background:transparent;}
             QPushButton {background:#1e3a8a; color:#fff; padding:10px 14px; border:none; border-radius:8px; font-weight:600;}
             QPushButton:checked {background:#2563eb;}
-            QComboBox {background:#1e3a8a; color:#fff; padding:8px 10px; border:1px solid #1f2937; border-radius:8px;}
+            QComboBox {background:#0b1220; color:#e6eef8; padding:8px 10px; border:1px solid #1f2937; border-radius:8px;}
             QComboBox::drop-down {border: none;}
-            QComboBox QAbstractItemView {background:#1e3a8a; color:#fff; selection-background-color:#000; selection-color:#fff; border:none; outline:0; padding:0; margin:0;}
-            QComboBox QAbstractItemView::item {padding:8px 10px; margin:0; background:#1e3a8a;}
-            QComboBox QAbstractItemView::item:selected {background:#000; color:#fff;}
-            QComboBox QAbstractItemView::item:hover {background:#0b1220; color:#fff;}
+            QComboBox QAbstractItemView {background:#0b1220; color:#e6eef8; selection-background-color:#1e3a8a; selection-color:#fff; border:1px solid #1f2937; outline:0; padding:0; margin:0;}
+            QComboBox QAbstractItemView::item {padding:10px 12px; margin:0; background:#0b1220; border:0;}
+            QComboBox QAbstractItemView::item:selected {background:#1e3a8a; color:#fff; border:0;}
+            QComboBox QAbstractItemView::item:hover {background:#111827; color:#fff;}
         """)
         panel.setObjectName("controlPanel")
         panel.setMinimumWidth(520)
 
-        title = QLabel("Control Center", panel)
-        title.setStyleSheet("font-size:18px; font-weight:700;")
-        subtitle = QLabel("Tap to switch cameras, record, or open fullscreen views.", panel)
-        subtitle.setStyleSheet("color:#9ca3af;")
-
+        title_bar = QFrame(panel)
+        title_bar.setStyleSheet("background:#0b1220; border-bottom:1px solid #1f2937;")
+        title_bar_layout = QHBoxLayout(title_bar)
+        title_bar_layout.setContentsMargins(0, 0, 0, 0)
+        title_label = QLabel("MyEye - Control Panel", title_bar)
+        title_label.setStyleSheet("font-size:20px; font-weight:700; padding:12px 6px;")
+        title_bar_layout.addWidget(title_label)
 
         for b in (self.capture_btn, self.record_btn, self.record_c1_btn, self.record_c2_btn, self.motion_btn, self.refresh_btn, self.fs_btn):
             b.setParent(panel)
             b.setMinimumHeight(44)
             b.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        for b in (self.switch_main_btn, self.switch_c1_btn, self.switch_c2_btn, self.res_apply):
-            b.setParent(panel)
-            b.setMinimumHeight(44)
-            b.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-
         for cb in (self.main_sel, self.c1_sel, self.c2_sel, self.fs_combo, self.res_sel):
             cb.setParent(panel)
             cb.setMinimumHeight(38)
@@ -1283,21 +1302,18 @@ class CameraApp(QWidget):
         row_main.setSpacing(10)
         row_main.addWidget(QLabel("Main View", panel))
         row_main.addWidget(self.main_sel)
-        row_main.addWidget(self.switch_main_btn)
         row_main.addWidget(self.record_btn)
 
         row_c1 = QHBoxLayout()
         row_c1.setSpacing(10)
         row_c1.addWidget(QLabel("Corner 1", panel))
         row_c1.addWidget(self.c1_sel)
-        row_c1.addWidget(self.switch_c1_btn)
         row_c1.addWidget(self.record_c1_btn)
 
         row_c2 = QHBoxLayout()
         row_c2.setSpacing(10)
         row_c2.addWidget(QLabel("Corner 2", panel))
         row_c2.addWidget(self.c2_sel)
-        row_c2.addWidget(self.switch_c2_btn)
         row_c2.addWidget(self.record_c2_btn)
 
         row_misc = QHBoxLayout()
@@ -1310,35 +1326,27 @@ class CameraApp(QWidget):
         row_misc.addWidget(self.fs_btn)
 
         wrap = QVBoxLayout(panel)
-        wrap.setContentsMargins(16, 16, 16, 16)
-        wrap.setSpacing(12)
-        wrap.addWidget(title)
-        wrap.addWidget(subtitle)
-        wrap.addWidget(QLabel("Cameras", panel))
+        wrap.setContentsMargins(16, 10, 16, 16)
+        wrap.setSpacing(10)
+        wrap.addWidget(title_bar)
         wrap.addLayout(row_actions)
-        wrap.addSpacing(6)
         wrap.addLayout(row_main)
         wrap.addLayout(row_c1)
         wrap.addLayout(row_c2)
-        wrap.addWidget(QLabel("Resolution & Fullscreen", panel))
         wrap.addLayout(row_misc)
+        wrap.addStretch(1)
         btn_row = QHBoxLayout()
-        close_btn = QPushButton("Close", panel)
-        save_close_btn = QPushButton("Save & Close", panel)
-        close_btn.setMinimumHeight(40)
+        save_close_btn = QPushButton("Save and Close", panel)
         save_close_btn.setMinimumHeight(40)
-        close_btn.clicked.connect(lambda: (self._reset_pending_to_live(), panel.hide()))
         save_close_btn.clicked.connect(lambda: (self._apply_all_pending(), panel.hide()))
-        btn_row.addWidget(close_btn)
+        btn_row.addStretch(1)
         btn_row.addWidget(save_close_btn)
+        btn_row.addStretch(1)
         wrap.addLayout(btn_row)
         panel.setLayout(wrap)
         panel.adjustSize()
         self.controls_panel = panel
         self.res_apply.clicked.connect(self._apply_resolution_from_panel)
-        self.switch_main_btn.clicked.connect(lambda: self._apply_slot("main"))
-        self.switch_c1_btn.clicked.connect(lambda: self._apply_slot("corner1"))
-        self.switch_c2_btn.clicked.connect(lambda: self._apply_slot("corner2"))
 
     def toggle_controls_panel(self):
         self._ensure_controls_panel()
@@ -1351,9 +1359,41 @@ class CameraApp(QWidget):
             {"index": self.settings.get("corner1"), "path": self.settings.get("corner1_path")},
             {"index": self.settings.get("corner2"), "path": self.settings.get("corner2_path")},
         )
-        pos = self.settings_btn.mapToGlobal(QPoint(0, self.settings_btn.height() + 10))
-        self.controls_panel.move(pos)
-        self.controls_panel.show()
+        self.controls_panel.showFullScreen()
+
+    def _show_in_use_warning(self):
+        parent = self.controls_panel if self.controls_panel else self
+        msg = QMessageBox(parent)
+        msg.setIcon(QMessageBox.Icon.Warning)
+        msg.setWindowTitle("In Use")
+        msg.setText("This camera is chosen for another window already.")
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.setWindowModality(Qt.WindowModality.NonModal)
+        msg.setWindowFlags(msg.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        msg.show()
+        QTimer.singleShot(2000, msg.close)
+
+    def _load_logo(self, path: Optional[Union[str, Path]] = None):
+        target = Path(path) if path else Path(__file__).with_name("logo.png")
+        if target.exists():
+            pix = QPixmap(str(target)).scaled(self.logo_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            self.logo_label.setPixmap(pix)
+            self.logo_label.setStyleSheet("background:transparent; border:none;")
+
+    def _load_brand(self, path: Optional[Union[str, Path]] = None):
+        target = Path(path) if path else Path(__file__).with_name("brand.png")
+        if target.exists():
+            pix = QPixmap(str(target)).scaled(self.brand_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            self.brand_label.setPixmap(pix)
+            self.brand_label.setStyleSheet("background:transparent; border:none;")
+        else:
+            self.brand_label.setText("MyEye")
+
+    def _logo_press(self, ev):
+        try:
+            self.toggle_controls_panel()
+        finally:
+            ev.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
