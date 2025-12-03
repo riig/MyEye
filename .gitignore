@@ -1,0 +1,9 @@
+# Ignore runtime captures
+captures/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local settings
+settings.json
